@@ -13,6 +13,7 @@
   "dependencies": {
     "dgram": "^1.0.1",
     "express": "^5.2.1",
+    "node-fetch": "^2.7.0",
     "socket.io": "^4.8.3"
   }
 }
