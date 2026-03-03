@@ -1,51 +1,47 @@
+// server.js
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
-const dgram = require("dgram");
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-const ARTNET_PORT = 6454;
-const udpServer = dgram.createSocket("udp4");
+// Puerto dinámico para Railway
+const PORT = process.env.PORT || 3000;
 
-// Servir archivos estáticos
+// Middleware para leer JSON
+app.use(express.json());
+
+// Servir archivos estáticos de la carpeta 'public'
 app.use(express.static("public"));
 
-// Conexión de móviles
+// Conexión de clientes WebSocket
 io.on("connection", (socket) => {
   console.log("📱 User connected");
+
+  socket.on("disconnect", () => {
+    console.log("📱 User disconnected");
+  });
 });
 
-// Guardar último color
-let lastColor = { r: -1, g: -1, b: -1 };
+// Ruta para recibir colores desde tu PC puente (DMX → web)
+app.post("/updateColor", (req, res) => {
+  const { r, g, b } = req.body;
 
-// Escuchar paquetes Art-Net
-udpServer.on("message", (msg) => {
-  if (msg.toString("ascii", 0, 7) !== "Art-Net") return;
+  if (r === undefined || g === undefined || b === undefined) {
+    return res.status(400).send("Faltan datos de color");
+  }
 
-  const dmxData = msg.slice(18);
+  // Emitir a todos los clientes conectados
+  io.emit("colorChange", { r, g, b });
 
-  const r = dmxData[0] || 0;
-  const g = dmxData[1] || 0;
-  const b = dmxData[2] || 0;
+  console.log(`🎨 Color recibido → R=${r} G=${g} B=${b}`);
 
-  // Evitar enviar colores repetidos
-  if (r === lastColor.r && g === lastColor.g && b === lastColor.b) return;
-  lastColor = { r, g, b };
-
-  console.log(`🎛 DMX → R=${r} G=${g} B=${b}`);
-  io.emit("color", { r, g, b }); // <- evento 'color' para que coincida con index.html
+  res.send("Color recibido");
 });
 
-// Escuchar en todas las interfaces y puerto dinámico
-const PORT = process.env.PORT || 3000;
+// Arrancar servidor web
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-});
-
-// UDP server para Art-Net
-udpServer.bind(ARTNET_PORT, () => {
-  console.log(`🎛 Escuchando Art-Net en puerto ${ARTNET_PORT}`);
 });
