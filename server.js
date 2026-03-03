@@ -1,49 +1,38 @@
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
+const socketIo = require("socket.io");
 const dgram = require("dgram");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = socketIo(server);
 
-const PORT = process.env.PORT || 3000;
+const ARTNET_PORT = 6454;
+const udpServer = dgram.createSocket("udp4");
 
-// Servir carpeta public
 app.use(express.static("public"));
 
-// WebSocket conexión
 io.on("connection", (socket) => {
-  console.log("📱 Usuario conectado:", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("❌ Usuario desconectado:", socket.id);
-  });
+  console.log("📱 User connected");
 });
 
-// ===== ART-NET RECEIVER =====
-const ARTNET_PORT = 6454;
-const artnet = dgram.createSocket("udp4");
-
-artnet.on("message", (msg) => {
-  // Verificamos que sea paquete Art-Net
-  if (msg.slice(0, 7).toString() === "Art-Net") {
-    const dmxData = msg.slice(18);
-
-    // Enviar solo los primeros 3 canales (RGB)
-    const r = dmxData[0];
-    const g = dmxData[1];
-    const b = dmxData[2];
-
-    io.emit("color", { r, g, b });
-  }
+udpServer.on("message", (msg) => {
+  if (msg.toString("ascii", 0, 7) !== "Art-Net") return;
+  const dmxData = msg.slice(18);
+  const r = dmxData[0] || 0;
+  const g = dmxData[1] || 0;
+  const b = dmxData[2] || 0;
+  console.log(`🎛 DMX → R=${r} G=${g} B=${b}`);
+  io.emit("colorChange", { r, g, b });
 });
 
-artnet.bind(ARTNET_PORT, () => {
-  console.log(`🎛 Escuchando Art-Net en puerto ${ARTNET_PORT}`);
+udpServer.bind(ARTNET_PORT);
+udpServer.on("listening", () => {
+  const address = udpServer.address();
+  console.log(`🎛 Escuchando Art-Net en ${address.address}:${address.port}`);
 });
 
-// Servidor web
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

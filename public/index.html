@@ -30,10 +30,10 @@
   const socket = io();
   const screen = document.getElementById("screen");
 
-  socket.on("color", (data) => {
-    screen.style.backgroundColor = 
-      `rgb(${data.r}, ${data.g}, ${data.b})`;
-  });
+socket.on("colorChange", (color) => {
+    document.getElementById("colorArea").style.backgroundColor =
+      `rgb(${color.r},${color.g},${color.b})`;
+});
 </script>
 
 </body>
