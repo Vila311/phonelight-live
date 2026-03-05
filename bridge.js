@@ -58,7 +58,7 @@ udpServer.on("message", (msg) => {
 });
 
 // Escuchamos en todas las interfaces para captar el tráfico WiFi
-udpServer.bind(ARTNET_PORT, "0.0.0.0", () => {
+udpServer.bind(ARTNET_PORT, "10.0.2.170", () => {
   console.log("------------------------------------------");
   console.log(`🚀 PUENTE ESTABLE ACTIVADO`);
   console.log(`Escuchando Art-Net y retransmitiendo a Railway`);

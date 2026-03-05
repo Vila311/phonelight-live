@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PhoneLight Live</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhoneLight Live | Alejandro Sanz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <style>
     /* RESET */
@@ -15,42 +15,47 @@
       font-family: 'Montserrat', sans-serif;
       background: black;
       overflow: hidden;
+      color: white;
     }
 
     /* PANTALLA DE BIENVENIDA */
     #welcome {
-      width: 100%;
-      height: 100%;
+      position: fixed;
+      inset: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       text-align: center;
-      padding: 20px;
-      color: white;
-      background: black;
+      padding: 30px;
+      background: #0a0a0a;
+      z-index: 10;
     }
 
     #welcome h1 {
-      font-size: 2rem;
+      font-size: 1.8rem;
       margin-bottom: 15px;
+      letter-spacing: 1px;
     }
 
     #welcome p {
-      font-size: 1.1rem;
-      margin-bottom: 30px;
-      opacity: 0.8;
+      font-size: 1rem;
+      line-height: 1.5;
+      margin-bottom: 40px;
+      opacity: 0.7;
     }
 
     #welcome button {
-      padding: 15px 30px;
-      font-size: 1rem;
+      padding: 18px 40px;
+      font-size: 1.1rem;
       font-weight: bold;
-      background: white;
-      color: black;
+      background: #fdfdfd;
+      color: #000;
       border: none;
       cursor: pointer;
-      border-radius: 5px;
+      border-radius: 50px;
+      text-transform: uppercase;
+      box-shadow: 0 0 20px rgba(255,255,255,0.2);
     }
 
     /* PANTALLA DEL SHOW */
@@ -62,63 +67,91 @@
     }
 
     header {
-      height: 60px;
-      background: black;
-      color: white;
+      height: 50px;
+      background: rgba(0,0,0,0.8);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
-      letter-spacing: 2px;
+      font-size: 0.8rem;
+      letter-spacing: 3px;
+      font-weight: 300;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
 
     #colorArea {
       flex: 1;
       background: black;
-      transition: background 0.2s linear;
+      /* Transición suave para que el cambio no sea agresivo a la vista */
+      transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     footer {
-      height: 40px;
+      height: 30px;
       background: black;
-      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.8rem;
-      opacity: 0.7;
+      font-size: 0.6rem;
+      opacity: 0.4;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
 
-  <!-- PANTALLA DE BIENVENIDA -->
   <div id="welcome">
-    <h1>Bienvenido al concierto de Alejandro Sanz</h1>
-    <p>Prepárate para una experiencia única.<br>Tu pantalla será parte del espectáculo.</p>
-    <button onclick="enterShow()">Entrar a la experiencia</button>
+    <h1 id="title">GIRA SANZ 2026</h1>
+    <p>Tu pantalla será parte de la iluminación.<br>Mantén el brillo al máximo para un mejor efecto.</p>
+    <button onclick="enterShow()">Unirse al show</button>
   </div>
 
-  <!-- PANTALLA DEL SHOW -->
   <div id="show">
-    <header>GIRA SANZ 2026</header>
+    <header>CONECTADO AL SHOW</header>
     <div id="colorArea"></div>
-    <footer>Proyecto PhoneLight Stadium</footer>
+    <footer>PhoneLight Stadium System</footer>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    let wakeLock = null;
 
-    function enterShow() {
-      document.getElementById("welcome").style.display = "none";
-      document.getElementById("show").style.display = "flex";
+    // Función para evitar que la pantalla se apague (Solo funciona tras interactuar)
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.log("WakeLock no soportado o denegado");
+      }
     }
 
-    // Cambiar color según DMX
-    socket.on("colorChange", (color) => {
-      document.getElementById("colorArea").style.backgroundColor =
-        `rgb(${color.r}, ${color.g}, ${color.b})`;
+    function enterShow() {
+      // Pedir pantalla encendida
+      requestWakeLock();
+      
+      // Cambiar interfaz
+      document.getElementById("welcome").style.display = "none";
+      document.getElementById("show").style.display = "flex";
+      
+      // Forzar pantalla completa si es posible
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      }
+    }
+
+    // --- LA CORRECCIÓN CLAVE ---
+    // Escuchamos "color" (igual que en server.js y admin.html)
+    socket.on("color", (color) => {
+      console.log("Recibido de DMX:", color);
+      const colorArea = document.getElementById("colorArea");
+      colorArea.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
+    });
+
+    // Si el socket se desconecta y reconecta, pedimos el último color
+    socket.on("connect", () => {
+      console.log("Conectado al servidor de Alejandro Sanz");
     });
   </script>
 
