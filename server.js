@@ -1,3 +1,4 @@
+// server.js mejorado
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
@@ -7,60 +8,59 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Puerto dinámico para Railway
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json());
 app.use(express.static("public"));
 
-// Variables de estado global
 let connectedUsers = 0;
 let lastColor = { r: 0, g: 0, b: 0 };
+let bridgeActive = false;
+let lastBridgeUpdate = Date.now();
 
-// --- GESTIÓN DE WEBSOCKETS ---
 io.on("connection", (socket) => {
   connectedUsers++;
-  console.log(`📱 Usuario conectado (${connectedUsers} en total)`);
-  
-  // Enviar el último color y el conteo actual nada más conectar
-  socket.emit("color", lastColor); 
-  io.emit("stats-update", { users: connectedUsers });
+  // Enviar estado actual al nuevo admin
+  io.emit("stats-update", { 
+    users: connectedUsers, 
+    bridgeStatus: bridgeActive,
+    color: lastColor 
+  });
 
   socket.on("disconnect", () => {
     connectedUsers--;
-    console.log(`📱 Usuario desconectado (${connectedUsers} restantes)`);
     io.emit("stats-update", { users: connectedUsers });
   });
 });
 
-// --- RUTAS HTTP ---
-
-// Recibir colores desde el PC Puente (bridge.js)
+// Ruta que recibe datos del bridge (ajusta tu bridge.js para apuntar aquí)
 app.post("/updateColor", (req, res) => {
   const { r, g, b } = req.body;
-
-  if (r === undefined || g === undefined || b === undefined) {
-    return res.status(400).send("Faltan datos de color");
-  }
-
   lastColor = { r, g, b };
+  bridgeActive = true;
+  lastBridgeUpdate = Date.now();
 
-  // Emitimos 'color' (para el Admin) y 'colorChange' (para los usuarios)
-  // O mejor, unificamos a 'color' en todos los sitios para no liarnos
-  io.emit("color", lastColor);
+  io.emit("color", lastColor); // Para los usuarios e index.html
+  io.emit("stats-update", { 
+    users: connectedUsers, 
+    bridgeStatus: true, 
+    color: lastColor,
+    log: `Paquete DMX recibido: RGB(${r},${g},${b})`
+  });
 
-  console.log(`🎨 Bridge emitió → R=${r} G=${g} B=${b}`);
-  res.send("Color recibido");
+  res.send("OK");
 });
 
-// Ruta para el panel de administración
+// Chequeo de salud del Bridge (cada 3 segundos)
+setInterval(() => {
+  if (Date.now() - lastBridgeUpdate > 3000) {
+    bridgeActive = false;
+    io.emit("stats-update", { bridgeStatus: false });
+  }
+}, 2000);
+
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "admin.html"));
 });
 
-// Arrancar servidor
-server.listen(PORT, () => {
-  console.log(`🚀 Servidor en marcha en puerto ${PORT}`);
-  console.log(`📊 Admin Dashboard en: /admin`);
-});
+server.listen(PORT, () => console.log(`🚀 Dashboard en /admin`));
