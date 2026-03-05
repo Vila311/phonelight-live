@@ -3,7 +3,7 @@ const axios = require('axios');
 
 // --- CONFIGURACIÓN CRÍTICA ---
 // 1. REEMPLAZA ESTA URL con la tuya real de Railway (ej: https://phonelight-production.up.railway.app/updateColor)
-const RAILWAY_URL = "https://TU-URL-DE-RAILWAY.app/updateColor"; 
+const RAILWAY_URL = "https://phonelight-live-production.up.railway.app/updateColor"; 
 const INTERFACE_IP = "10.0.2.170"; // Escucha en todas las redes
 
 const dmx = new dmxnet();
