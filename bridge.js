@@ -3,7 +3,7 @@ const axios = require('axios');
 
 // CONFIGURACIÓN - Cambia 'tu-app' por tu nombre real en Railway
 const RAILWAY_URL = "https://tu-app.railway.app/updateColor"; 
-const INTERFACE_IP = "0.0.0.0"; 
+const INTERFACE_IP = "10.0.2.170"; 
 
 const dmx = new dmxnet();
 
