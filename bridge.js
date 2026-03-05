@@ -1,13 +1,12 @@
 const { dmxnet } = require('dmxnet');
 const axios = require('axios');
 
-// CONFIGURACIÓN
-const RAILWAY_URL = "https://tu-app.railway.app/updateColor"; // <--- CAMBIA ESTO
-const INTERFACE_IP = "0.0.0.0"; // Escucha en todas las redes del PC
+// CONFIGURACIÓN - Cambia 'tu-app' por tu nombre real en Railway
+const RAILWAY_URL = "https://tu-app.railway.app/updateColor"; 
+const INTERFACE_IP = "0.0.0.0"; 
 
 const dmx = new dmxnet();
 
-// Configurar el receptor Art-Net
 const receiver = dmx.newReceiver({
   ip: INTERFACE_IP,
   subnet: 0,
@@ -15,35 +14,25 @@ const receiver = dmx.newReceiver({
   port: 6454
 });
 
-console.log("🚀 Bridge iniciado y escuchando Art-Net...");
-console.log("📡 Enviando datos a:", RAILWAY_URL);
+console.log("🚀 Bridge iniciado con éxito.");
+console.log("📡 Escuchando Art-Net y enviando a:", RAILWAY_URL);
 
 let lastSentTime = 0;
-const throttleMs = 40; // Máximo 25 envíos por segundo para no saturar Railway
+const throttleMs = 45; // Enviamos aprox 22 fps para no saturar la red del estadio
 
 receiver.on('data', (data) => {
   const now = Date.now();
   
-  // Throttle: Evitamos enviar demasiados paquetes por segundo
   if (now - lastSentTime > throttleMs) {
-    const r = data[0]; // Canal 1
-    const g = data[1]; // Canal 2
-    const b = data[2]; // Canal 3
-
     const payload = {
-      r: r,
-      g: g,
-      b: b,
-      sentAt: now // IMPORTANTE: Para calcular el delay en el Admin
+      r: data[0], 
+      g: data[1], 
+      b: data[2],
+      sentAt: now // Para medir los MS en el dashboard
     };
 
     axios.post(RAILWAY_URL, payload)
-      .then(() => {
-        // Opcional: console.log(`Enviado: RGB(${r},${g},${b})`);
-      })
-      .catch(err => {
-        console.error("❌ Error de conexión con Railway:", err.message);
-      });
+      .catch(err => console.error("⚠️ Error de conexión:", err.message));
 
     lastSentTime = now;
   }
