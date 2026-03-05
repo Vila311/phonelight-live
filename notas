@@ -1,0 +1,30 @@
+Acción,Comando
+1. Marcar cambios,git add .
+2. Nombrar cambios,"git commit -m ""mensaje"""
+3. Subir a GitHub,git push origin main
+4. Bajar cambios (si usas otro PC),git pull origin main
+
+
+node bridge.js
+
+
+Lo que hace estable a esta versión:
+Filtro ArtDMX: Solo procesa paquetes de iluminación reales, ignorando paquetes de "saludo" o "configuración" de la red.
+
+Control de Flujo: Al limitar los envíos con setTimeout, evitas que tu conexión de internet se colapse si el software de luces envía datos demasiado rápido.
+
+Persistencia de Color: Al comparar r, g, b con lastColor, solo gastas datos y recursos cuando realmente mueves un fader.
+
+📋 Checklist para Mañana (MA onPC):
+Cierra todo: Asegúrate de que no haya otros scripts de Node o Resolume abiertos antes de empezar.
+
+IP de Red: Verifica que MA onPC esté enviando Art-Net a la IP 127.0.0.1 (si el bridge está en el mismo PC) o a la IP específica de tu red local.
+
+Consola limpia: Si empiezas a ver datos de nuevo sin tocar la mesa de luces, recuerda usar el comando taskkill /f /im node.exe en la terminal para limpiar cualquier proceso colgado.
+
+💾 Tu "Nota Rápida" para guardar en el móvil:
+Para arrancar: node bridge.js
+
+Para actualizar la web: git add . -> git commit -m "update" -> git push origin main
+
+Si falla: Reiniciar el PC o matar procesos de Node en el Administrador de Tareas.

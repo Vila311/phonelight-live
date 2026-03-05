@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control Room - PhoneLight</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root { --bg: #0d1117; --card: #161b22; --accent: #58a6ff; --green: #238636; --red: #da3633; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; }
+        .value { font-size: 3rem; font-weight: bold; margin: 10px 0; color: var(--accent); }
+        .status { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .online { background: var(--green); box-shadow: 0 0 10px var(--green); }
+        .offline { background: var(--red); box-shadow: 0 0 10px var(--red); }
+        #color-preview { width: 100%; height: 80px; border-radius: 8px; border: 2px solid #30363d; }
+    </style>
+</head>
+<body>
+    <h1>📊 Panel de Control Técnico</h1>
+    <div class="grid">
+        <div class="card">
+            <h3>Usuarios Conectados</h3>
+            <div id="user-count" class="value">0</div>
+            <p>Estado del Servidor: <span class="status online"></span> OK</p>
+        </div>
+
+        <div class="card">
+            <h3>Color en Emisión</h3>
+            <div id="color-preview" style="background: #000;"></div>
+            <p id="rgb-text">R: 0 G: 0 B: 0</p>
+        </div>
+
+        <div class="card">
+            <h3>Estado del Bridge (DMX)</h3>
+            <div id="bridge-status" class="value" style="font-size: 1.5rem;">ESPERANDO...</div>
+            <p id="last-seen">Sincronización: -- ms</p>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const userCount = document.getElementById('user-count');
+        const colorPreview = document.getElementById('color-preview');
+        const rgbText = document.getElementById('rgb-text');
+        const bridgeStatus = document.getElementById('bridge-status');
+
+        let lastMessageTime = Date.now();
+
+        socket.on('stats-update', (data) => {
+            userCount.innerText = data.users;
+        });
+
+        socket.on('color', (color) => {
+            const {r, g, b} = color;
+            colorPreview.style.background = `rgb(${r},${g},${b})`;
+            rgbText.innerText = `R: ${r} G: ${g} B: ${b}`;
+            
+            // Lógica de estado del Bridge
+            bridgeStatus.innerText = "RECIBIENDO";
+            bridgeStatus.style.color = "#238636";
+            lastMessageTime = Date.now();
+        });
+
+        // Chequeo de conexión cada 2 segundos
+        setInterval(() => {
+            if (Date.now() - lastMessageTime > 3000) {
+                bridgeStatus.innerText = "DESCONECTADO";
+                bridgeStatus.style.color = "#da3633";
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

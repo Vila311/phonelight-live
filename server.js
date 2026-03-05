@@ -1,7 +1,7 @@
-// server.js
 const express = require("express");
 const http = require("http");
 const socketIo = require("socket.io");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
@@ -10,22 +10,33 @@ const io = socketIo(server);
 // Puerto dinámico para Railway
 const PORT = process.env.PORT || 3000;
 
-// Middleware para leer JSON
+// Middleware
 app.use(express.json());
-
-// Servir archivos estáticos de la carpeta 'public'
 app.use(express.static("public"));
 
-// Conexión de clientes WebSocket
+// Variables de estado global
+let connectedUsers = 0;
+let lastColor = { r: 0, g: 0, b: 0 };
+
+// --- GESTIÓN DE WEBSOCKETS ---
 io.on("connection", (socket) => {
-  console.log("📱 User connected");
+  connectedUsers++;
+  console.log(`📱 Usuario conectado (${connectedUsers} en total)`);
+  
+  // Enviar el último color y el conteo actual nada más conectar
+  socket.emit("color", lastColor); 
+  io.emit("stats-update", { users: connectedUsers });
 
   socket.on("disconnect", () => {
-    console.log("📱 User disconnected");
+    connectedUsers--;
+    console.log(`📱 Usuario desconectado (${connectedUsers} restantes)`);
+    io.emit("stats-update", { users: connectedUsers });
   });
 });
 
-// Ruta para recibir colores desde tu PC puente (DMX → web)
+// --- RUTAS HTTP ---
+
+// Recibir colores desde el PC Puente (bridge.js)
 app.post("/updateColor", (req, res) => {
   const { r, g, b } = req.body;
 
@@ -33,15 +44,23 @@ app.post("/updateColor", (req, res) => {
     return res.status(400).send("Faltan datos de color");
   }
 
-  // Emitir a todos los clientes conectados
-  io.emit("colorChange", { r, g, b });
+  lastColor = { r, g, b };
 
-  console.log(`🎨 Color recibido → R=${r} G=${g} B=${b}`);
+  // Emitimos 'color' (para el Admin) y 'colorChange' (para los usuarios)
+  // O mejor, unificamos a 'color' en todos los sitios para no liarnos
+  io.emit("color", lastColor);
 
+  console.log(`🎨 Bridge emitió → R=${r} G=${g} B=${b}`);
   res.send("Color recibido");
 });
 
-// Arrancar servidor web
+// Ruta para el panel de administración
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
+// Arrancar servidor
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Servidor en marcha en puerto ${PORT}`);
+  console.log(`📊 Admin Dashboard en: /admin`);
 });
