@@ -14,11 +14,11 @@
       height: 100%;
       font-family: 'Montserrat', sans-serif;
       background: black;
-      overflow: hidden; /* Evita que los usuarios hagan scroll */
+      overflow: hidden; /* Evita el scroll accidental en el estadio */
       color: white;
     }
 
-    /* --- PANTALLA DE BIENVENIDA --- */
+    /* PANTALLA DE BIENVENIDA */
     #welcome {
       position: fixed;
       inset: 0;
@@ -28,14 +28,13 @@
       align-items: center;
       text-align: center;
       padding: 30px;
-      background: #000000;
+      background: black;
       z-index: 10;
     }
 
     #welcome h1 {
       font-size: 1.8rem;
       margin-bottom: 15px;
-      letter-spacing: 1px;
     }
 
     #welcome p {
@@ -49,16 +48,15 @@
       padding: 18px 40px;
       font-size: 1.1rem;
       font-weight: bold;
-      background: #ffffff;
-      color: #000000;
+      background: white;
+      color: black;
       border: none;
       cursor: pointer;
       border-radius: 5px;
       text-transform: uppercase;
-      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
     }
 
-    /* --- PANTALLA DEL SHOW --- */
+    /* PANTALLA DEL SHOW */
     #show {
       display: none;
       flex-direction: column;
@@ -74,14 +72,13 @@
       justify-content: center;
       font-size: 1rem;
       letter-spacing: 2px;
-      z-index: 2;
     }
 
     #colorArea {
       flex: 1;
       background: black;
-      /* Transición súper rápida pero lo suficiente para suavizar saltos del fader */
-      transition: background-color 0.1s linear;
+      /* Transición suave para cambios de color profesionales */
+      transition: background-color 0.15s linear;
     }
 
     footer {
@@ -92,7 +89,6 @@
       justify-content: center;
       font-size: 0.8rem;
       opacity: 0.7;
-      z-index: 2;
     }
   </style>
 </head>
@@ -115,45 +111,42 @@
     const socket = io();
     let wakeLock = null;
 
-    // Función para evitar que la pantalla se apague sola
+    // Función para evitar que el móvil apague la pantalla por inactividad
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
           wakeLock = await navigator.wakeLock.request('screen');
-          console.log('Pantalla bloqueada para que no se apague.');
         }
       } catch (err) {
-        console.log("WakeLock no soportado en este navegador.");
+        console.log("WakeLock no disponible");
       }
     }
 
     function enterShow() {
-      // 1. Ocultar bienvenida y mostrar área de color
+      // 1. Cambiar interfaz
       document.getElementById("welcome").style.display = "none";
       document.getElementById("show").style.display = "flex";
       
-      // 2. Intentar poner en Pantalla Completa
+      // 2. Intentar poner pantalla completa
       if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen bloqueado por el navegador"));
+        document.documentElement.requestFullscreen().catch(() => {});
       }
 
-      // 3. Solicitar mantener la pantalla encendida
+      // 3. Mantener pantalla encendida
       requestWakeLock();
     }
 
-    // --- SINCRONIZACIÓN CON EL SERVIDOR ---
-    // Ahora escuchamos "color" (Igual que en server.js y admin.html)
+    // --- CORRECCIÓN DE COMUNICACIÓN ---
+    // Escuchamos el evento "color" enviado por el servidor
     socket.on("color", (color) => {
-      // Validamos que los datos RGB existan antes de pintar
-      if (color && color.r !== undefined && color.g !== undefined && color.b !== undefined) {
-        document.getElementById("colorArea").style.backgroundColor = 
+      if (color && color.r !== undefined) {
+        document.getElementById("colorArea").style.backgroundColor =
           `rgb(${color.r}, ${color.g}, ${color.b})`;
       }
     });
 
-    // Mensaje de estado por si se cae el internet un momento
     socket.on("connect", () => {
-      console.log("Conectado al servidor de iluminación.");
+      console.log("Conectado al sistema de luces");
     });
   </script>
 
