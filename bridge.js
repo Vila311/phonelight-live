@@ -3,7 +3,7 @@ const axios = require('axios');
 
 // --- CONFIGURACIÓN CORREGIDA ---
 const RAILWAY_URL = "https://phonelight-live-production.up.railway.app/updateColor"; 
-const INTERFACE_IP = "10.0.2.170"; 
+const INTERFACE_IP = "10.0.3.4"; 
 
 const dmx = new dmxnet();
 
