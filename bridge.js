@@ -17,74 +17,45 @@ async function startBridge() {
       type: 'input',
       name: 'ip',
       message: 'IP de escucha Art-Net:',
-      default: process.env.INTERFACE_IP || "0.0.0.0"
-    },
-    {
-      type: 'number',
-      name: 'universe',
-      message: 'Universo Art-Net (0-15):',
-      default: 0
+      default: "10.0.3.4"
     }
   ]);
 
-  const { url, ip, universe } = answers;
+  const { url, ip } = answers;
   const dmx = new dmxnet();
   
   const receiver = dmx.newReceiver({
     ip: ip,
     subnet: 0,
-    universe: universe,
+    universe: 0,
     port: 6454
   });
 
-  console.log("\n------------------------------------------");
-  console.log(`✅ RECEPTOR ART-NET ACTIVO | UNIVERSO: ${universe}`);
-  console.log(`💓 HEARTBEAT: CADA 2s | FILTRO DE CAMBIO: ON`);
-  console.log("------------------------------------------\n");
-
   let lastSentTime = 0;
   let lastColor = { r: -1, g: -1, b: -1 };
-  
-  // Variables para el contador PPS
   let packetsThisSecond = 0;
-  let currentPPS = 0;
 
-  // --- CONTADOR DE RENDIMIENTO (Cada 1 segundo) ---
+  // Contador de rendimiento en consola
   setInterval(() => {
-    currentPPS = packetsThisSecond;
-    packetsThisSecond = 0; // Resetear para el siguiente segundo
-    if (currentPPS > 0) {
-        process.stdout.write(`\r📊 Rendimiento: ${currentPPS} paquetes/seg | Estado: Estable    `);
-    } else {
-        process.stdout.write(`\r📊 Rendimiento: 0 paquetes/seg | Estado: Esperando Art-Net...`);
-    }
+    const status = packetsThisSecond > 0 ? 'ESTABLE' : 'ESPERANDO ART-NET';
+    process.stdout.write(`\r📊 Rendimiento: ${packetsThisSecond} paquetes/seg | Estado: ${status}    `);
+    packetsThisSecond = 0;
   }, 1000);
 
-  // --- LÓGICA DE HEARTBEAT (Latido) ---
+  // Heartbeat para mantener el servidor despierto
   setInterval(() => {
-    axios.post(url, { ...lastColor, type: 'heartbeat' })
-      .catch(() => console.log("\n⚠️ Error: No se pudo enviar Heartbeat"));
+    axios.post(url, { ...lastColor, type: 'heartbeat' }).catch(() => {});
   }, 2000);
 
-  // --- ESCUCHA DE ART-NET ---
   receiver.on('data', (data) => {
-    const now = Date.now();
-    const r = data[0];
-    const g = data[1];
-    const b = data[2];
+    const r = data[0], g = data[1], b = data[2];
+    const changed = r !== lastColor.r || g !== lastColor.g || b !== lastColor.b;
 
-    const colorChanged = r !== lastColor.r || g !== lastColor.g || b !== lastColor.b;
-
-    // Throttle de 45ms (aprox 22 fps max)
-    if (colorChanged && (now - lastSentTime > 45)) {
+    if (changed && (Date.now() - lastSentTime > 45)) {
       lastColor = { r, g, b };
-      lastSentTime = now;
-      packetsThisSecond++; // Aumentar contador para el PPS
-
-      axios.post(url, { r, g, b, sentAt: now })
-        .catch(err => {
-          console.error("\n🔴 Error enviando cambio de color");
-        });
+      lastSentTime = Date.now();
+      packetsThisSecond++;
+      axios.post(url, { r, g, b }).catch(() => {});
     }
   });
 }

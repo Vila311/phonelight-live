@@ -19,7 +19,7 @@ let lastBridgeUpdate = Date.now();
 
 io.on("connection", (socket) => {
     connectedUsers++;
-    socket.emit("color", lastColor); // Enviar color actual al conectar
+    socket.emit("color", lastColor);
     io.emit("stats-update", { users: connectedUsers, bridgeStatus: bridgeActive });
 
     socket.on("disconnect", () => {
@@ -29,7 +29,7 @@ io.on("connection", (socket) => {
 });
 
 app.post("/updateColor", (req, res) => {
-    const { r, g, b, sentAt, type } = req.body;
+    const { r, g, b, type } = req.body;
     bridgeActive = true;
     lastBridgeUpdate = Date.now();
 
@@ -38,21 +38,21 @@ app.post("/updateColor", (req, res) => {
         return res.send("ALIVE");
     }
 
-    lastColor = { r, g, b, sentAt };
-    io.emit("color", lastColor); // Notificar a los dispositivos móviles
+    lastColor = { r, g, b };
+    io.emit("color", lastColor);
     io.emit("stats-update", { bridgeStatus: true, log: `Color: RGB(${r},${g},${b})` });
     res.send("OK");
 });
 
-// Blackout si pasan más de 5 segundos sin señal
+// Blackout de seguridad si el bridge se desconecta
 setInterval(() => {
     if (bridgeActive && (Date.now() - lastBridgeUpdate > 5000)) {
         bridgeActive = false;
         lastColor = { r: 0, g: 0, b: 0 };
         io.emit("color", lastColor); 
-        io.emit("stats-update", { bridgeStatus: false, log: "⚠️ BRIDGE OFFLINE - BLACKOUT ACTIVADO" });
+        io.emit("stats-update", { bridgeStatus: false, log: "⚠️ BRIDGE OFFLINE" });
     }
 }, 2000);
 
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
-server.listen(PORT, () => console.log(`🚀 Servidor activo en puerto ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Servidor activo`));
