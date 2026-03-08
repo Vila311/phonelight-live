@@ -1,47 +1,64 @@
-// bridge.js - VERSIÓN MULTIZONA PARA ESTADIO
 require('dotenv').config();
 const { dmxnet } = require('dmxnet');
 const axios = require('axios');
 
-const url = "https://tu-url-de-railway.app/updateColor"; // Cambia esto por tu URL real
+const args = process.argv.slice(2);
+const ipManual = args[0] || "0.0.0.0";
+const subnetManual = parseInt(args[1]) || 0;
+const universeManual = parseInt(args[2]) || 0;
+
+// SUSTITUYE CON TU URL DE RAILWAY
+const url = "https://phonelight-live-production.up.railway.app/updateColor"; 
 const dmx = new dmxnet();
 
 const receiver = dmx.newReceiver({
-  ip: "0.0.0.0",
-  subnet: 0,
-  universe: 0,
+  ip: ipManual,
+  subnet: subnetManual,
+  universe: universeManual,
   port: 6454
 });
 
-console.log("🚀 BRIDGE MULTIZONA INICIADO");
-console.log("Mapeo: A1(CH1), A2(CH5), B1(CH9), B2(CH13), B3(CH17), B4(CH21)");
+console.log(`🚀 BRIDGE CONECTADO`);
+console.log(`📡 Escuchando en: ${ipManual} | Subnet: ${subnetManual} | Universo: ${universeManual}`);
+console.log(`🎨 Modo: RGBA (Canal 4 = Dimmer)`);
 
 let lastSentData = {};
 
+// HEARTBEAT: Avisa al servidor cada 3 segundos que estamos online
+setInterval(() => {
+    axios.post(url, { type: 'heartbeat' }).catch(() => {});
+}, 3000);
+
 receiver.on('data', (data) => {
-  // Función para extraer color + dimmer de un bloque de 4 canales
-  const getZoneColor = (startIndex) => {
-    const dimmer = data[startIndex] / 255;
+  
+  const getRGBAColor = (startIndex) => {
+    const rBase = data[startIndex] || 0;
+    const gBase = data[startIndex + 1] || 0;
+    const bBase = data[startIndex + 2] || 0;
+    const alpha = (data[startIndex + 3] !== undefined ? data[startIndex + 3] : 255) / 255;
+
     return {
-      r: Math.round(data[startIndex + 1] * dimmer),
-      g: Math.round(data[startIndex + 2] * dimmer),
-      b: Math.round(data[startIndex + 3] * dimmer)
+      r: Math.round(rBase * alpha),
+      g: Math.round(gBase * alpha),
+      b: Math.round(bBase * alpha)
     };
   };
 
-  // Construimos el paquete para todas las zonas
+  // MAPEADO CORREGIDO (Incrementos de 4 en 4 reales)
   const currentData = {
-    "A1": getZoneColor(0),  // CH 1, 2, 3, 4
-    "A2": getZoneColor(4),  // CH 5, 6, 7, 8
-    "B1": getZoneColor(8),  // CH 9, 10, 11, 12
-    "B2": getZoneColor(12), // CH 13, 14, 15, 16
-    "B3": getZoneColor(16), // CH 17, 18, 19, 20
-    "B4": getZoneColor(20)  // CH 21, 22, 23, 24
+    "A1": getRGBAColor(0),  // CH 1-4
+    "A2": getRGBAColor(4),  // CH 5-8
+    "B1": getRGBAColor(8),  // CH 9-12
+    "B2": getRGBAColor(12), // CH 13-16
+    "B3": getRGBAColor(16), // CH 17-20
+    "B4": getRGBAColor(20)  // CH 21-24 (Antes tenías 24, ahora es 20)
   };
 
-  // Comparamos si algo ha cambiado (para no saturar la red)
+  // Solo enviamos si hay cambios reales en los colores
   if (JSON.stringify(currentData) !== JSON.stringify(lastSentData)) {
     lastSentData = currentData;
-    axios.post(url, currentData).catch(e => console.log("Error envío:", e.message));
+    axios.post(url, currentData).catch(e => {
+        console.log("⚠️ Error de conexión con Railway");
+    });
   }
 });
