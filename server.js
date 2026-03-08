@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,7 +15,12 @@ app.use(express.static('public'));
 let lastBridgeSignal = Date.now();
 let bridgeActive = false;
 
-// Ruta que recibe los datos del Bridge (PC con Resolume)
+// Ruta explícita para el panel de administración
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Recibir datos desde el Bridge
 app.post('/updateColor', (req, res) => {
     const data = req.body;
     lastBridgeSignal = Date.now();
@@ -23,26 +29,31 @@ app.post('/updateColor', (req, res) => {
     if (data.type === 'heartbeat') {
         io.emit('stats-update', { bridgeStatus: true, log: "Latido recibido (Bridge OK)" });
     } else {
-        // Reenviar colores a móviles y al mapa del Admin
+        // Enviar colores a los clientes (móviles) y al mapa del Admin
         io.emit('color-update', data);
-        io.emit('stats-update', { bridgeStatus: true, log: "Colores actualizados: Zonas A/B" });
+        io.emit('stats-update', { bridgeStatus: true, log: "DMX: Colores actualizados" });
     }
     res.sendStatus(200);
 });
 
-// Control de usuarios y Bridge Offline
+// Monitor de estado y usuarios
 setInterval(() => {
-    if (Date.now() - lastBridgeSignal > 5000) {
+    const now = Date.now();
+    if (now - lastBridgeSignal > 5000) {
         bridgeActive = false;
-        io.emit('stats-update', { bridgeStatus: false });
     }
-    io.emit('stats-update', { users: io.engine.clientsCount });
+    io.emit('stats-update', { 
+        users: io.engine.clientsCount,
+        bridgeStatus: bridgeActive 
+    });
 }, 3000);
 
 io.on('connection', (socket) => {
-    // Sistema de Latencia (Ping)
     socket.on('ping', () => socket.emit('pong'));
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
+// PUERTO 8080 solicitado para Railway
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`🚀 Servidor Phonelight ejecutándose en puerto ${PORT}`);
+});
