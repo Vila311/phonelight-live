@@ -8,111 +8,132 @@
     <style>
         :root {
             --sanz-orange: rgb(254, 109, 0);
+            --sanz-orange-alpha: rgba(254, 109, 0, 0.7);
         }
 
         body { 
             margin: 0; 
             background: #000; 
             color: white; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             overflow: hidden; 
             height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            transition: background 0.3s ease;
         }
 
-        /* --- PANTALLA DE SELECCIÓN --- */
+        /* PANTALLA DE SELECCIÓN */
         #setup-screen {
-            width: 90%;
-            max-width: 500px;
+            width: 95%;
+            max-width: 600px;
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
+            animation: fadeIn 0.8s ease-out;
         }
 
-        h1 { font-size: 1.5rem; margin-bottom: 10px; color: var(--sanz-orange); }
-        .welcome-text { font-size: 1rem; color: #bbb; margin-bottom: 25px; }
+        h1 { font-size: 1.6rem; margin-bottom: 5px; color: var(--sanz-orange); letter-spacing: 2px; }
+        .welcome-text { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; padding: 0 10px; }
 
+        /* CONTENEDOR DEL MAPA CON IMAGEN DE FONDO */
         #map-container { 
             width: 100%; 
-            background: #111;
-            padding: 20px;
-            border-radius: 20px;
-            border: 1px solid #333;
+            aspect-ratio: 1277 / 735; /* Proporción exacta de tu SVG */
+            background-image: url('estadio.png'); 
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            border-radius: 12px;
+            border: 2px solid #333;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            overflow: hidden;
         }
         
-        /* Estilos del Mapa SVG */
-        .sector { fill: #333; stroke: #000; stroke-width: 2px; transition: all 0.4s ease; cursor: pointer; }
-        
-        /* Color de la gira al seleccionar */
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Estilos de los sectores del SVG */
+        .sector { 
+            fill: rgba(255, 255, 255, 0.05); /* Casi invisible para ver el fondo */
+            stroke: rgba(255, 255, 255, 0.2); 
+            stroke-width: 1.5px; 
+            transition: all 0.3s ease; 
+            cursor: pointer; 
+        }
+
+        /* Al seleccionar: Naranja corporativo con transparencia para no tapar el fondo del todo */
         .sector.selected { 
-            fill: var(--sanz-orange) !important; 
+            fill: var(--sanz-orange-alpha) !important; 
             stroke: #fff; 
-            filter: drop-shadow(0 0 12px rgba(254, 109, 0, 0.8));
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 15px var(--sanz-orange));
         }
 
         #info-area {
-            margin-top: 25px;
-            min-height: 100px;
+            margin-top: 20px;
+            min-height: 110px;
             width: 100%;
         }
 
         #zone-confirm {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: bold;
-            color: white;
             margin-bottom: 15px;
-            display: none; /* Se activa al elegir */
+            display: none;
         }
 
         .btn-next {
             background: var(--sanz-orange);
             color: white;
             border: none;
-            padding: 15px 45px;
-            border-radius: 30px;
+            padding: 16px 50px;
+            border-radius: 40px;
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1rem;
+            text-transform: uppercase;
             cursor: pointer;
-            display: none; /* Se activa al elegir */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            animation: pulse 2s infinite;
+            display: none;
+            box-shadow: 0 4px 20px rgba(254, 109, 0, 0.4);
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        /* --- PANTALLA DE COLOR (MODO SHOW) --- */
+        /* PANTALLA DE COLOR (MODO SHOW) */
         #show-screen {
-            display: none; /* Oculto hasta dar al botón */
+            display: none;
             width: 100%;
             height: 100%;
+            transition: background 0.2s ease;
         }
 
         .label-footer {
             position: absolute;
-            bottom: 20px;
+            bottom: 30px;
             width: 100%;
             text-align: center;
             font-size: 0.7rem;
-            letter-spacing: 3px;
-            opacity: 0.4;
+            letter-spacing: 4px;
+            opacity: 0.3;
             pointer-events: none;
+            text-transform: uppercase;
         }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <div id="setup-screen">
-        <h1>Alejandro Sanz</h1>
-        <p class="welcome-text">Bienvenido al concierto. Tu teléfono formará parte del show. Selecciona tu ubicación:</p>
+        <h1>ALEJANDRO SANZ LIVE</h1>
+        <p class="welcome-text">Tu móvil será parte del espectáculo.<br>Toca tu ubicación en el mapa:</p>
         
         <div id="map-container">
             <svg viewBox="0 0 1277 735" xmlns="http://www.w3.org/2000/svg">
@@ -126,8 +147,8 @@
         </div>
 
         <div id="info-area">
-            <div id="zone-confirm">ESTÁS EN LA ZONA: <span id="target-id" style="color:var(--sanz-orange)">--</span></div>
-            <button id="btn-go" class="btn-next" onclick="goToExperience()">ENTRAR AL SHOW</button>
+            <div id="zone-confirm">ZONA SELECCIONADA: <span id="target-id" style="color:var(--sanz-orange)">--</span></div>
+            <button id="btn-go" class="btn-next" onclick="goToExperience()">CONECTAR DISPOSITIVO</button>
         </div>
     </div>
 
@@ -139,45 +160,38 @@
         const socket = io();
         let myZone = null;
 
-        // SELECCIÓN DE ZONA
+        // SELECCIÓN TÁCTIL
         document.querySelectorAll('.sector').forEach(sector => {
             sector.addEventListener('click', function() {
-                // 1. Limpiar otras selecciones
+                // Limpiar selección previa
                 document.querySelectorAll('.sector').forEach(s => s.classList.remove('selected'));
                 
-                // 2. Pintar la zona del color de la gira (activando la clase CSS)
+                // Activar nueva zona
                 this.classList.add('selected');
                 myZone = this.id;
 
-                // 3. Mostrar confirmación y botón
+                // Actualizar interfaz
                 document.getElementById('target-id').innerText = myZone;
                 document.getElementById('zone-confirm').style.display = 'block';
                 document.getElementById('btn-go').style.display = 'inline-block';
                 
-                // Vibración táctil si está disponible
-                if (window.navigator.vibrate) window.navigator.vibrate(30);
+                if (window.navigator.vibrate) window.navigator.vibrate(25);
             });
         });
 
-        // FUNCIÓN DEL BOTÓN "ENTRAR AL SHOW"
+        // ENTRAR AL MODO COLOR
         function goToExperience() {
             if (!myZone) return;
-
-            // Notificar al servidor para unirse a la sala de esa zona
             socket.emit('join-zone', myZone);
 
-            // Transición visual: Ocultar mapa, mostrar pantalla de color
             document.getElementById('setup-screen').style.display = 'none';
             document.getElementById('show-screen').style.display = 'block';
-            document.getElementById('footer-zone').innerText = `ZONA ${myZone} ACTIVADA`;
-            
-            // Iniciar en negro total
+            document.getElementById('footer-zone').innerText = `ZONA ${myZone} • SISTEMA ACTIVO`;
             document.body.style.backgroundColor = "#000";
         }
 
-        // ESCUCHAR COLORES DE LA MA3 (BRIDGE -> SERVER -> MÓVIL)
+        // RECEPCIÓN DMX POR ZONAS
         socket.on('color-update', (allZonesData) => {
-            // Buscamos si el Bridge mandó datos para MI zona específica
             if (myZone && allZonesData[myZone]) {
                 const color = allZonesData[myZone];
                 document.body.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
