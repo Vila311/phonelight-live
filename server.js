@@ -15,33 +15,33 @@ app.use(express.static('public'));
 let lastBridgeSignal = Date.now();
 let bridgeActive = false;
 
-// Ruta explícita para el panel de administración
+// Ruta para el panel de administración
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Recibir datos desde el Bridge
+// Recibir datos del Bridge
 app.post('/updateColor', (req, res) => {
     const data = req.body;
     lastBridgeSignal = Date.now();
     bridgeActive = true;
 
     if (data.type === 'heartbeat') {
-        io.emit('stats-update', { bridgeStatus: true, log: "Latido recibido (Bridge OK)" });
+        // Emitimos el latido específicamente
+        io.emit('stats-update', { bridgeStatus: true, log: "💓 Latido recibido (Bridge OK)" });
     } else {
-        // Enviar colores a los clientes (móviles) y al mapa del Admin
         io.emit('color-update', data);
-        io.emit('stats-update', { bridgeStatus: true, log: "DMX: Colores actualizados" });
+        // Solo enviamos log de color si no hay una avalancha de datos
+        io.emit('stats-update', { bridgeStatus: true, log: "🎨 DMX: Zonas actualizadas" });
     }
     res.sendStatus(200);
 });
 
-// Monitor de estado y usuarios
+// Monitor constante
 setInterval(() => {
     const now = Date.now();
-    if (now - lastBridgeSignal > 5000) {
-        bridgeActive = false;
-    }
+    bridgeActive = (now - lastBridgeSignal < 5000);
+    
     io.emit('stats-update', { 
         users: io.engine.clientsCount,
         bridgeStatus: bridgeActive 
@@ -52,8 +52,5 @@ io.on('connection', (socket) => {
     socket.on('ping', () => socket.emit('pong'));
 });
 
-// PUERTO 8080 solicitado para Railway
 const PORT = process.env.PORT || 8080;
-server.listen(PORT, () => {
-    console.log(`🚀 Servidor Phonelight ejecutándose en puerto ${PORT}`);
-});
+server.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
