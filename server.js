@@ -37,11 +37,15 @@ app.post('/updateColor', (req, res) => {
     res.sendStatus(200);
 });
 
-// Monitor constante
+// En tu server.js
 setInterval(() => {
     const now = Date.now();
-    bridgeActive = (now - lastBridgeSignal < 5000);
+    // Si han pasado más de 5 segundos desde el último latido, desactivar
+    if (now - lastBridgeSignal > 5000) {
+        bridgeActive = false;
+    }
     
+    // Enviar el estado real a todos los paneles admin abiertos
     io.emit('stats-update', { 
         users: io.engine.clientsCount,
         bridgeStatus: bridgeActive 
