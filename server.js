@@ -1,83 +1,48 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
-const path = require("path");
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = new Server(server, { cors: { origin: "*" } });
 
-const PORT = process.env.PORT || 3000;
-
+app.use(cors());
 app.use(express.json());
-app.use(express.static("public"));
+app.use(express.static('public'));
 
-let connectedUsers = 0;
-let lastZonesData = {}; // Ahora guardamos un objeto de zonas
+let lastBridgeSignal = Date.now();
 let bridgeActive = false;
-let lastBridgeUpdate = Date.now();
 
-io.on("connection", (socket) => {
-    connectedUsers++;
-    io.emit("stats-update", { users: connectedUsers, bridgeStatus: bridgeActive });
-
-    // Lógica para que el móvil se una a una zona específica
-    socket.on("join-zone", (zoneId) => {
-        // Sacar de zonas anteriores para evitar duplicados
-        const rooms = Array.from(socket.rooms);
-        rooms.forEach(room => {
-            if (room !== socket.id) socket.leave(room);
-        });
-
-        socket.join(zoneId);
-        console.log(`📍 Móvil ${socket.id} unido a zona: ${zoneId}`);
-        
-        // Si ya hay un color para esa zona, se lo mandamos de inmediato
-        if (lastZonesData[zoneId]) {
-            socket.emit("color-update", lastZonesData);
-        }
-    });
-
-    socket.on("disconnect", () => {
-        connectedUsers--;
-        io.emit("stats-update", { users: connectedUsers });
-    });
-});
-
-// RUTA PARA RECIBIR DATOS MULTI-ZONA DESDE EL BRIDGE
-app.post("/updateColor", (req, res) => {
-    const data = req.body; // Recibe { "A1": {r,g,b}, "A2": ... } o { type: 'heartbeat' }
-    
+// Ruta que recibe los datos del Bridge (PC con Resolume)
+app.post('/updateColor', (req, res) => {
+    const data = req.body;
+    lastBridgeSignal = Date.now();
     bridgeActive = true;
-    lastBridgeUpdate = Date.now();
 
     if (data.type === 'heartbeat') {
-        io.emit("stats-update", { bridgeStatus: true, log: "💓 Latido recibido" });
-        return res.send("ALIVE");
+        io.emit('stats-update', { bridgeStatus: true, log: "Latido recibido (Bridge OK)" });
+    } else {
+        // Reenviar colores a móviles y al mapa del Admin
+        io.emit('color-update', data);
+        io.emit('stats-update', { bridgeStatus: true, log: "Colores actualizados: Zonas A/B" });
     }
-
-    // Guardamos el último estado de todas las zonas
-    lastZonesData = data;
-
-    // Enviamos el objeto de zonas a TODOS. 
-    // El index.html filtrará según su propia zona.
-    io.emit("color-update", lastZonesData);
-    
-    io.emit("stats-update", { bridgeStatus: true, log: "🌈 Actualización de Zonas" });
-    res.send("OK");
+    res.sendStatus(200);
 });
 
-// Blackout de seguridad
+// Control de usuarios y Bridge Offline
 setInterval(() => {
-    if (bridgeActive && (Date.now() - lastBridgeUpdate > 5000)) {
+    if (Date.now() - lastBridgeSignal > 5000) {
         bridgeActive = false;
-        lastZonesData = {}; 
-        // Mandamos un objeto vacío o negro a todos
-        io.emit("color-update", {}); 
-        io.emit("stats-update", { bridgeStatus: false, log: "⚠️ BRIDGE OFFLINE" });
+        io.emit('stats-update', { bridgeStatus: false });
     }
-}, 2000);
+    io.emit('stats-update', { users: io.engine.clientsCount });
+}, 3000);
 
-app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+io.on('connection', (socket) => {
+    // Sistema de Latencia (Ping)
+    socket.on('ping', () => socket.emit('pong'));
+});
 
-server.listen(PORT, () => console.log(`🚀 Servidor de Estadio Activo en puerto ${PORT}`));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
