@@ -2,117 +2,361 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel Control - Phonelight Pro</title>
+    <title>Panel Control — Phonelight Pro</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #f0f0f0; margin: 0; padding: 20px; }
-        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; max-width: 1200px; margin: 0 auto; }
-        .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; text-align: center; }
-        .value { font-size: 2.2rem; font-weight: bold; display: block; margin-top: 10px; }
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; }
-        .online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
-        .offline { background: #ff4444; box-shadow: 0 0 10px #ff4444; }
-        .map-card { grid-column: span 2; }
-        #map-monitor { 
-            width: 100%; max-width: 500px; margin: 20px auto; aspect-ratio: 1277/735;
-            background: url('estadio.png') no-repeat center; background-size: cover;
-            position: relative; border: 1px solid #333; border-radius: 10px;
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: #080808;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
         }
-        svg { position: absolute; top:0; left:0; width:100%; height:100%; }
-        .sector { fill: rgba(255,255,255,0.05); stroke: rgba(255,255,255,0.2); transition: 0.3s; }
-        #log { grid-column: 1 / -1; background: #000; border: 1px solid #222; border-radius: 8px; padding: 15px; height: 150px; overflow-y: auto; color: #00ff88; font-family: monospace; font-size: 0.85rem; }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1200px;
+            margin: 0 auto 20px;
+        }
+        header h1 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.6rem;
+            letter-spacing: 5px;
+            color: #fe6d00;
+            margin: 0;
+        }
+        #clock {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            color: #555;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: #111;
+            border: 1px solid #1e1e1e;
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .card h2 {
+            font-size: 0.72rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #555;
+            margin: 0 0 10px;
+        }
+        .big-value {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 3rem;
+            line-height: 1;
+            color: #fff;
+        }
+        .sub-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        /* ── STATUS BADGE ──────────────────────────────────────── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 6px;
+        }
+        .badge.ok   { background: rgba(0,255,136,0.1); color: #00ff88; border: 1px solid rgba(0,255,136,0.25); }
+        .badge.fail { background: rgba(255,68,68,0.1);  color: #ff4444; border: 1px solid rgba(255,68,68,0.25); }
+        .badge.wait { background: rgba(255,200,0,0.1);  color: #ffc800; border: 1px solid rgba(255,200,0,0.25); }
+
+        .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot.ok   { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .dot.fail { background: #ff4444; box-shadow: 0 0 8px #ff4444; }
+        .dot.wait { background: #ffc800; box-shadow: 0 0 8px #ffc800; animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+        }
+
+        /* ── MAPA ──────────────────────────────────────────────── */
+        .card.map-card { grid-column: 1 / -1; }
+
+        #map-monitor {
+            width: 100%;
+            max-width: 560px;
+            aspect-ratio: 1277 / 735;
+            background: url('estadio.png') no-repeat center / cover;
+            position: relative;
+            border: 1px solid #222;
+            border-radius: 10px;
+            margin: 14px auto 0;
+            overflow: hidden;
+        }
+        #map-monitor svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+        .sector {
+            fill: rgba(255,255,255,0.04);
+            stroke: rgba(255,255,255,0.15);
+            transition: fill 0.2s, filter 0.2s;
+        }
+
+        /* Etiquetas de zona sobre el SVG */
+        .zone-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            fill: rgba(255,255,255,0.5);
+            pointer-events: none;
+        }
+
+        /* ── LOG ───────────────────────────────────────────────── */
+        .card.log-card { grid-column: 1 / -1; }
+
+        #log {
+            background: #000;
+            border: 1px solid #1a1a1a;
+            border-radius: 8px;
+            padding: 12px 14px;
+            height: 140px;
+            overflow-y: auto;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+        }
+        #log .entry { display: flex; gap: 10px; }
+        #log .entry .ts { color: #333; flex-shrink: 0; }
+        #log .entry .msg { color: #aaa; }
+
+        /* Colores especiales en log */
+        #log .entry .msg.heart  { color: #00ff88; }
+        #log .entry .msg.color  { color: #fe6d00; }
+        #log .entry .msg.warn   { color: #ffc800; }
+        #log .entry .msg.info   { color: #6699ff; }
     </style>
 </head>
 <body>
-    <div class="admin-grid">
-        <div class="card">
-            <h2>📱 Usuarios</h2>
-            <span id="user-count" class="value">0</span>
-            <canvas id="userChart" height="80"></canvas>
-        </div>
-        <div class="card">
-            <h2>📡 Red (Ping)</h2>
-            <span id="ping-value" class="value">-- ms</span>
-            <p id="delay-text" style="color:#888;">Retraso: 0s</p>
-        </div>
-        <div class="card">
-            <h2>⚙️ Puente</h2>
-            <span id="bridge-status-text" class="value"><span id="bridge-dot" class="status-dot offline"></span>ESPERANDO</span>
-        </div>
-        <div class="card">
-            <h2>☁️ Railway</h2>
-            <span class="value"><span class="status-dot online"></span>8080 OK</span>
-        </div>
-        <div class="card map-card">
-            <h2>🏟️ Monitor Visual</h2>
-            <div id="map-monitor">
-                <svg viewBox="0 0 1277 735" xmlns="http://www.w3.org/2000/svg">
-                    <path id="A1" class="sector" d="m666.2 240.8l114.7 57.6-102 52.2-115.8-57.6z"/>
-                    <path id="A2" class="sector" d="m692.6 357.2l102.4-50.9 116 56.4-102.7 52.1z"/>
-                    <path id="B1" class="sector" d="m458.5 345.3l97.5-49.1 54.8 26.8-97.7 50.7z"/>
-                    <path id="B2" class="sector" d="m521 376.2l98.7-49.4 54.4 28.4-98.5 49.6z"/>
-                    <path id="B3" class="sector" d="m586.9 409.8l98.3-49.8 54.8 28.2-98.5 49.6z"/>
-                    <path id="B4" class="sector" d="m648.7 440.8l97.3-49.9 54.4 27.4-96.9 49.9z"/>
-                </svg>
-            </div>
-        </div>
-        <div id="log">Iniciando registro...</div>
+
+<header>
+    <h1>📡 Phonelight Pro — Panel</h1>
+    <div id="clock">--:--:--</div>
+</header>
+
+<div class="grid">
+
+    <div class="card">
+        <h2>📱 Dispositivos conectados</h2>
+        <div class="big-value" id="user-count">0</div>
+        <div class="sub-value" id="zone-breakdown">-- por zona</div>
+        <canvas id="userChart" height="60" style="margin-top:10px"></canvas>
     </div>
 
-    <script>
-        const socket = io();
-        const logEl = document.getElementById('log');
-        let firstLog = true;
+    <div class="card">
+        <h2>📡 Latencia (Ping)</h2>
+        <div class="big-value" id="ping-value">--</div>
+        <div class="sub-value">ms · servidor</div>
+        <div class="sub-value" id="delay-text" style="margin-top:4px">Retraso: --s</div>
+    </div>
 
-        const ctx = document.getElementById('userChart').getContext('2d');
-        const userChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: Array(20).fill(''), datasets: [{ data: Array(20).fill(0), borderColor: '#00ff88', tension: 0.4, elements: {point: {radius: 0}} }] },
-            options: { plugins: {legend: false}, scales: {x: {display: false}, y: {display: false}} }
+    <div class="card">
+        <h2>⚙️ Bridge Art-Net</h2>
+        <div id="bridge-badge" class="badge wait">
+            <div id="bridge-dot" class="dot wait"></div>
+            <span id="bridge-text">ESPERANDO</span>
+        </div>
+        <div class="sub-value" id="bridge-sub" style="margin-top:8px">Sin señal</div>
+    </div>
+
+    <div class="card">
+        <h2>☁️ Servidor Railway</h2>
+        <div class="badge ok">
+            <div class="dot ok"></div>
+            <span>Puerto 8080 OK</span>
+        </div>
+        <div class="sub-value" style="margin-top:8px">Socket.IO activo</div>
+    </div>
+
+    <!-- MAPA VISUAL -->
+    <div class="card map-card">
+        <h2>🏟️ Monitor Visual — Zonas DMX</h2>
+        <div id="map-monitor">
+            <svg viewBox="0 0 1277 735" xmlns="http://www.w3.org/2000/svg">
+                <path id="A1" class="sector" d="m666.2 240.8l114.7 57.6-102 52.2-115.8-57.6z"/>
+                <path id="A2" class="sector" d="m692.6 357.2l102.4-50.9 116 56.4-102.7 52.1z"/>
+                <path id="B1" class="sector" d="m458.5 345.3l97.5-49.1 54.8 26.8-97.7 50.7z"/>
+                <path id="B2" class="sector" d="m521 376.2l98.7-49.4 54.4 28.4-98.5 49.6z"/>
+                <path id="B3" class="sector" d="m586.9 409.8l98.3-49.8 54.8 28.2-98.5 49.6z"/>
+                <path id="B4" class="sector" d="m648.7 440.8l97.3-49.9 54.4 27.4-96.9 49.9z"/>
+
+                <!-- Etiquetas de zona (centros aproximados) -->
+                <text class="zone-label" x="690" y="285">A1</text>
+                <text class="zone-label" x="760" y="390">A2</text>
+                <text class="zone-label" x="490" y="375">B1</text>
+                <text class="zone-label" x="560" y="400">B2</text>
+                <text class="zone-label" x="625" y="430">B3</text>
+                <text class="zone-label" x="688" y="460">B4</text>
+            </svg>
+        </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card log-card">
+        <h2>📋 Registro en vivo</h2>
+        <div id="log"><div class="entry"><span class="ts">--:--:--</span><span class="msg">Iniciando...</span></div></div>
+    </div>
+
+</div>
+
+<script>
+    const socket = io();
+
+    // ── RELOJ ─────────────────────────────────────────────────────────────────
+    setInterval(() => {
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('es-ES');
+    }, 1000);
+
+    // ── GRÁFICA USUARIOS ──────────────────────────────────────────────────────
+    const ctx = document.getElementById('userChart').getContext('2d');
+    const userChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array(30).fill(''),
+            datasets: [{
+                data: Array(30).fill(0),
+                borderColor: '#fe6d00',
+                backgroundColor: 'rgba(254,109,0,0.07)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 1.5,
+                elements: { point: { radius: 0 } }
+            }]
+        },
+        options: {
+            animation: false,
+            plugins: { legend: false },
+            scales: { x: { display: false }, y: { display: false, min: 0 } }
+        }
+    });
+
+    // ── PING ──────────────────────────────────────────────────────────────────
+    setInterval(() => {
+        const start = Date.now();
+        socket.emit('ping');
+        socket.once('pong', () => {
+            const ms = Date.now() - start;
+            document.getElementById('ping-value').innerText = ms;
+            document.getElementById('delay-text').innerText = `Retraso: ${(ms / 1000).toFixed(3)}s`;
         });
+    }, 2000);
 
-        setInterval(() => {
-            const start = Date.now();
-            socket.emit('ping');
-            socket.once('pong', () => {
-                const ms = Date.now() - start;
-                document.getElementById('ping-value').innerText = `${ms} ms`;
-                document.getElementById('delay-text').innerText = `Retraso: ${(ms/1000).toFixed(3)}s`;
-            });
-        }, 2000);
+    // ── BRIDGE STATUS ─────────────────────────────────────────────────────────
+    let lastBridgeActive = null;
+    function setBridgeStatus(active) {
+        if (active === lastBridgeActive) return;
+        lastBridgeActive = active;
 
-        socket.on('stats-update', (data) => {
-            if (data.users !== undefined) {
-                document.getElementById('user-count').innerText = data.users;
-                userChart.data.datasets[0].data.push(data.users);
-                userChart.data.datasets[0].data.shift();
-                userChart.update();
-            }
-            if (data.bridgeStatus !== undefined) {
-                const dot = document.getElementById('bridge-dot');
-                const text = document.getElementById('bridge-status-text');
-                dot.className = `status-dot ${data.bridgeStatus ? 'online' : 'offline'}`;
-                text.innerText = data.bridgeStatus ? 'ACTIVO' : 'FALLO';
-            }
-            if (data.log) {
-                if (firstLog) { logEl.innerHTML = ''; firstLog = false; }
-                const entry = document.createElement('div');
-                entry.innerHTML = `<span style="color:#555">[${new Date().toLocaleTimeString()}]</span> ${data.log}`;
-                logEl.prepend(entry);
-                if (logEl.childNodes.length > 50) logEl.removeChild(logEl.lastChild);
-            }
+        const badge = document.getElementById('bridge-badge');
+        const dot   = document.getElementById('bridge-dot');
+        const text  = document.getElementById('bridge-text');
+        const sub   = document.getElementById('bridge-sub');
+
+        if (active === true) {
+            badge.className = 'badge ok';
+            dot.className   = 'dot ok';
+            text.innerText  = 'ACTIVO';
+            sub.innerText   = 'Señal Art-Net recibida';
+        } else if (active === false) {
+            badge.className = 'badge fail';
+            dot.className   = 'dot fail';
+            text.innerText  = 'FALLO';
+            sub.innerText   = 'Sin señal — revisa Bridge';
+        } else {
+            badge.className = 'badge wait';
+            dot.className   = 'dot wait';
+            text.innerText  = 'ESPERANDO';
+            sub.innerText   = 'Sin señal';
+        }
+    }
+
+    // ── LOG ───────────────────────────────────────────────────────────────────
+    const logEl = document.getElementById('log');
+    let logReady = false;
+
+    function addLog(msg) {
+        if (!logReady) { logEl.innerHTML = ''; logReady = true; }
+
+        const classMap = {
+            '💓': 'heart',
+            '🎨': 'color',
+            '⚠️': 'warn',
+            '📱': 'info',
+            '❌': 'warn',
+        };
+        const cls = Object.entries(classMap).find(([k]) => msg.includes(k))?.[1] || '';
+
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        entry.innerHTML = `
+            <span class="ts">${new Date().toLocaleTimeString('es-ES')}</span>
+            <span class="msg ${cls}">${msg}</span>
+        `;
+        logEl.prepend(entry);
+        if (logEl.childNodes.length > 60) logEl.removeChild(logEl.lastChild);
+    }
+
+    // ── STATS UPDATE ──────────────────────────────────────────────────────────
+    socket.on('stats-update', (data) => {
+        if (data.users !== undefined) {
+            document.getElementById('user-count').innerText = data.users;
+            userChart.data.datasets[0].data.push(data.users);
+            userChart.data.datasets[0].data.shift();
+            userChart.update('none');
+        }
+        if (data.bridgeStatus !== undefined) {
+            setBridgeStatus(data.bridgeStatus);
+        }
+        if (data.log) {
+            addLog(data.log);
+        }
+    });
+
+    // ── COLOR UPDATE (mapa visual) ────────────────────────────────────────────
+    socket.on('color-update', (zones) => {
+        Object.entries(zones).forEach(([id, color]) => {
+            const el = document.getElementById(id);
+            if (!el || color.r === undefined) return;
+            const brightness = (color.r + color.g + color.b) / 3;
+            el.style.fill = `rgb(${color.r}, ${color.g}, ${color.b})`;
+            el.style.fillOpacity = brightness > 5 ? '0.85' : '0.04';
+            el.style.filter = brightness > 30
+                ? `drop-shadow(0 0 8px rgb(${color.r}, ${color.g}, ${color.b}))`
+                : 'none';
         });
-
-        socket.on('color-update', (zones) => {
-            Object.keys(zones).forEach(id => {
-                const el = document.getElementById(id);
-                if (el && zones[id].r !== undefined) {
-                    el.style.fill = `rgb(${zones[id].r}, ${zones[id].g}, ${zones[id].b})`;
-                    el.style.fillOpacity = "0.9";
-                }
-            });
-        });
-    </script>
+    });
+</script>
 </body>
 </html>

@@ -5,198 +5,299 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Alejandro Sanz - Experiencia Estadio</title>
     <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --sanz-orange: rgb(254, 109, 0);
-            --sanz-orange-alpha: rgba(254, 109, 0, 0.7);
+            --sanz-orange-alpha: rgba(254, 109, 0, 0.65);
+            --sanz-orange-glow: rgba(254, 109, 0, 0.3);
         }
 
-        body { 
-            margin: 0; 
-            background: #000; 
-            color: white; 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            overflow: hidden; 
-            height: 100vh;
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #000;
+            color: white;
+            font-family: 'DM Sans', sans-serif;
+            overflow: hidden;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            transition: background-color 0.15s ease;
         }
 
-        /* PANTALLA DE SELECCIÓN */
+        /* ── SETUP SCREEN ─────────────────────────────────────── */
         #setup-screen {
             width: 95%;
-            max-width: 600px;
-            text-align: center;
+            max-width: 540px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            animation: fadeIn 0.8s ease-out;
+            gap: 12px;
+            animation: fadeUp 0.7s ease-out both;
         }
 
-        h1 { font-size: 1.6rem; margin-bottom: 5px; color: var(--sanz-orange); letter-spacing: 2px; }
-        .welcome-text { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; padding: 0 10px; }
+        .title-block { text-align: center; }
+        .title-block h1 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: clamp(2rem, 8vw, 3rem);
+            letter-spacing: 6px;
+            color: var(--sanz-orange);
+            margin: 0 0 4px;
+            line-height: 1;
+        }
+        .title-block p {
+            font-size: 0.82rem;
+            color: #888;
+            margin: 0;
+            letter-spacing: 1px;
+        }
 
-        /* CONTENEDOR DEL MAPA CON IMAGEN DE FONDO */
-        #map-container { 
-            width: 100%; 
-            aspect-ratio: 1277 / 735; /* Proporción exacta de tu SVG */
-            background-image: url('estadio.png'); 
+        /* ── MAPA ─────────────────────────────────────────────── */
+        #map-container {
+            width: 100%;
+            aspect-ratio: 1277 / 735;
+            background-image: url('estadio.png');
             background-size: cover;
-            background-repeat: no-repeat;
             background-position: center;
-            border-radius: 12px;
-            border: 2px solid #333;
+            border-radius: 10px;
+            border: 1px solid #2a2a2a;
             position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(255,255,255,0.04);
         }
-        
+
         svg {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: block;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
         }
 
-        /* Estilos de los sectores del SVG */
-        .sector { 
-            fill: rgba(255, 255, 255, 0.05); /* Casi invisible para ver el fondo */
-            stroke: rgba(255, 255, 255, 0.2); 
-            stroke-width: 1.5px; 
-            transition: all 0.3s ease; 
-            cursor: pointer; 
+        .sector {
+            fill: rgba(255,255,255,0.03);
+            stroke: rgba(255,255,255,0.18);
+            stroke-width: 1.5px;
+            transition: fill 0.25s, filter 0.25s;
+            cursor: pointer;
+        }
+        .sector:hover {
+            fill: rgba(255,255,255,0.1);
+        }
+        .sector.selected {
+            fill: var(--sanz-orange-alpha) !important;
+            stroke: #fff;
+            stroke-width: 2.5px;
+            filter: drop-shadow(0 0 12px var(--sanz-orange));
         }
 
-        /* Al seleccionar: Naranja corporativo con transparencia para no tapar el fondo del todo */
-        .sector.selected { 
-            fill: var(--sanz-orange-alpha) !important; 
-            stroke: #fff; 
-            stroke-width: 3px;
-            filter: drop-shadow(0 0 15px var(--sanz-orange));
-        }
-
+        /* ── INFO / BOTÓN ─────────────────────────────────────── */
         #info-area {
-            margin-top: 20px;
-            min-height: 110px;
             width: 100%;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
 
         #zone-confirm {
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-bottom: 15px;
+            font-size: 0.78rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #666;
             display: none;
+        }
+        #zone-confirm span {
+            color: var(--sanz-orange);
+            font-weight: 600;
         }
 
         .btn-next {
             background: var(--sanz-orange);
-            color: white;
+            color: #000;
             border: none;
-            padding: 16px 50px;
+            padding: 14px 44px;
             border-radius: 40px;
-            font-weight: bold;
-            font-size: 1rem;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
             text-transform: uppercase;
             cursor: pointer;
             display: none;
-            box-shadow: 0 4px 20px rgba(254, 109, 0, 0.4);
+            box-shadow: 0 0 30px var(--sanz-orange-glow);
+            transition: transform 0.15s, box-shadow 0.15s;
         }
+        .btn-next:active { transform: scale(0.96); }
 
-        /* PANTALLA DE COLOR (MODO SHOW) */
+        /* ── SHOW SCREEN ──────────────────────────────────────── */
         #show-screen {
             display: none;
             width: 100%;
-            height: 100%;
-            transition: background 0.2s ease;
+            height: 100dvh;
+            position: relative;
+        }
+
+        /* Indicador de estado de conexión */
+        #conn-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        #conn-status.visible { opacity: 0.9; }
+        #conn-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 6px #00ff88;
+            transition: background 0.3s, box-shadow 0.3s;
+        }
+        #conn-dot.disconnected {
+            background: #ff4444;
+            box-shadow: 0 0 6px #ff4444;
         }
 
         .label-footer {
             position: absolute;
-            bottom: 30px;
+            bottom: 28px;
             width: 100%;
             text-align: center;
-            font-size: 0.7rem;
-            letter-spacing: 4px;
-            opacity: 0.3;
+            font-size: 0.62rem;
+            letter-spacing: 5px;
+            opacity: 0.25;
             pointer-events: none;
             text-transform: uppercase;
+            font-family: 'Bebas Neue', cursive;
         }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* ── ANIMACIONES ─────────────────────────────────────── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
 
-    <div id="setup-screen">
+<div id="setup-screen">
+    <div class="title-block">
         <h1>ALEJANDRO SANZ LIVE</h1>
-        <p class="welcome-text">Tu móvil será parte del espectáculo.<br>Toca tu ubicación en el mapa:</p>
-        
-        <div id="map-container">
-            <svg viewBox="0 0 1277 735" xmlns="http://www.w3.org/2000/svg">
-                <path id="A1" class="sector" d="m666.2 240.8l114.7 57.6-102 52.2-115.8-57.6z"/>
-                <path id="A2" class="sector" d="m692.6 357.2l102.4-50.9 116 56.4-102.7 52.1z"/>
-                <path id="B1" class="sector" d="m458.5 345.3l97.5-49.1 54.8 26.8-97.7 50.7z"/>
-                <path id="B2" class="sector" d="m521 376.2l98.7-49.4 54.4 28.4-98.5 49.6z"/>
-                <path id="B3" class="sector" d="m586.9 409.8l98.3-49.8 54.8 28.2-98.5 49.6z"/>
-                <path id="B4" class="sector" d="m648.7 440.8l97.3-49.9 54.4 27.4-96.9 49.9z"/>
-            </svg>
-        </div>
-
-        <div id="info-area">
-            <div id="zone-confirm">ZONA SELECCIONADA: <span id="target-id" style="color:var(--sanz-orange)">--</span></div>
-            <button id="btn-go" class="btn-next" onclick="goToExperience()">CONECTAR DISPOSITIVO</button>
-        </div>
+        <p>Tu móvil será parte del espectáculo. Toca tu zona:</p>
     </div>
 
-    <div id="show-screen">
-        <div class="label-footer" id="footer-zone">CONECTADO</div>
+    <div id="map-container">
+        <svg viewBox="0 0 1277 735" xmlns="http://www.w3.org/2000/svg">
+            <path id="A1" class="sector" d="m666.2 240.8l114.7 57.6-102 52.2-115.8-57.6z"/>
+            <path id="A2" class="sector" d="m692.6 357.2l102.4-50.9 116 56.4-102.7 52.1z"/>
+            <path id="B1" class="sector" d="m458.5 345.3l97.5-49.1 54.8 26.8-97.7 50.7z"/>
+            <path id="B2" class="sector" d="m521 376.2l98.7-49.4 54.4 28.4-98.5 49.6z"/>
+            <path id="B3" class="sector" d="m586.9 409.8l98.3-49.8 54.8 28.2-98.5 49.6z"/>
+            <path id="B4" class="sector" d="m648.7 440.8l97.3-49.9 54.4 27.4-96.9 49.9z"/>
+        </svg>
     </div>
 
-    <script>
-        const socket = io();
-        let myZone = null;
+    <div id="info-area">
+        <div id="zone-confirm">Zona seleccionada: <span id="target-id">--</span></div>
+        <button id="btn-go" class="btn-next" onclick="goToExperience()">Conectar dispositivo</button>
+    </div>
+</div>
 
-        // SELECCIÓN TÁCTIL
-        document.querySelectorAll('.sector').forEach(sector => {
-            sector.addEventListener('click', function() {
-                // Limpiar selección previa
-                document.querySelectorAll('.sector').forEach(s => s.classList.remove('selected'));
-                
-                // Activar nueva zona
-                this.classList.add('selected');
-                myZone = this.id;
+<div id="show-screen">
+    <div id="conn-status">
+        <div id="conn-dot"></div>
+        <span id="conn-label">Conectado</span>
+    </div>
+    <div class="label-footer" id="footer-zone">SISTEMA ACTIVO</div>
+</div>
 
-                // Actualizar interfaz
-                document.getElementById('target-id').innerText = myZone;
-                document.getElementById('zone-confirm').style.display = 'block';
-                document.getElementById('btn-go').style.display = 'inline-block';
-                
-                if (window.navigator.vibrate) window.navigator.vibrate(25);
-            });
+<script>
+    // ── SOCKET ────────────────────────────────────────────────────────────────
+    const socket = io({
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000
+    });
+
+    let myZone = null;
+    let inShow = false;
+
+    // ── SELECCIÓN DE ZONA ─────────────────────────────────────────────────────
+    document.querySelectorAll('.sector').forEach(sector => {
+        sector.addEventListener('click', function () {
+            document.querySelectorAll('.sector').forEach(s => s.classList.remove('selected'));
+            this.classList.add('selected');
+            myZone = this.id;
+
+            document.getElementById('target-id').innerText = myZone;
+            document.getElementById('zone-confirm').style.display = 'block';
+            document.getElementById('btn-go').style.display = 'inline-block';
+
+            if (window.navigator.vibrate) window.navigator.vibrate(25);
         });
+    });
 
-        // ENTRAR AL MODO COLOR
-        function goToExperience() {
-            if (!myZone) return;
+    // ── ENTRAR AL MODO SHOW ───────────────────────────────────────────────────
+    function goToExperience() {
+        if (!myZone) return;
+
+        socket.emit('join-zone', myZone);
+        inShow = true;
+
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('show-screen').style.display = 'block';
+        document.getElementById('footer-zone').innerText = `ZONA ${myZone} • SISTEMA ACTIVO`;
+        document.body.style.backgroundColor = "#000";
+    }
+
+    // ── RECEPCIÓN DE COLOR ────────────────────────────────────────────────────
+    socket.on('color-update', (allZonesData) => {
+        if (!myZone || !allZonesData[myZone]) return;
+        const c = allZonesData[myZone];
+        document.body.style.backgroundColor = `rgb(${c.r}, ${c.g}, ${c.b})`;
+    });
+
+    // ── ESTADO DE CONEXIÓN ────────────────────────────────────────────────────
+    function setConnStatus(connected, label) {
+        const dot = document.getElementById('conn-dot');
+        const lbl = document.getElementById('conn-label');
+        const box = document.getElementById('conn-status');
+
+        dot.className = connected ? '' : 'disconnected';
+        lbl.innerText = label;
+        box.classList.add('visible');
+        setTimeout(() => box.classList.remove('visible'), 3000);
+    }
+
+    socket.on('connect', () => {
+        // Re-unirse a la zona al reconectar
+        if (inShow && myZone) {
             socket.emit('join-zone', myZone);
-
-            document.getElementById('setup-screen').style.display = 'none';
-            document.getElementById('show-screen').style.display = 'block';
-            document.getElementById('footer-zone').innerText = `ZONA ${myZone} • SISTEMA ACTIVO`;
-            document.body.style.backgroundColor = "#000";
+            setConnStatus(true, 'Reconectado');
         }
+    });
 
-        // RECEPCIÓN DMX POR ZONAS
-        socket.on('color-update', (allZonesData) => {
-            if (myZone && allZonesData[myZone]) {
-                const color = allZonesData[myZone];
-                document.body.style.backgroundColor = `rgb(${color.r}, ${color.g}, ${color.b})`;
-            }
-        });
-    </script>
+    socket.on('disconnect', () => {
+        if (inShow) {
+            setConnStatus(false, 'Sin señal');
+            document.body.style.backgroundColor = '#000';
+        }
+    });
+
+    socket.on('reconnecting', () => {
+        if (inShow) setConnStatus(false, 'Reconectando...');
+    });
+</script>
 </body>
 </html>
